@@ -261,6 +261,29 @@ To activate learning mode, tell Claude you want to practice with guidance — fo
 - LeetCode may be experiencing high traffic - wait and retry
 - Check your internet connection
 
+## Skills & Plugins
+
+This repo also ships an **agent skill** that teaches Claude (and other AI agents) how to use the MCP server correctly — including session flow, prompt invocations, learning mode, and authentication.
+
+### Claude Code Plugin
+
+Install the skill directly as a Claude Code plugin:
+
+```
+/plugin marketplace add SPerekrestova/interactive-leetcode-mcp
+/plugin install interactive-leetcode-mcp@interactive-leetcode-mcp
+```
+
+Then start a practice session with:
+
+```
+/interactive-leetcode-mcp:interactive-leetcode-mcp
+```
+
+### ClawHub (OpenClaw / Clawbot)
+
+The skill is also published on [ClawHub](https://clawhub.ai/SPerekrestova/interactive-leetcode) for use with OpenClaw-compatible agents.
+
 ## Acknowledgements
 
 Forked from [Leetcode mcp](https://github.com/jinzcdev/leetcode-mcp-server))
