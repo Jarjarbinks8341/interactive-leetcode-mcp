@@ -1,20 +1,21 @@
-# Interactive LeetCode MCP
+# Interactive LeetCode MCP (Fork)
 
-[![npm version](https://img.shields.io/npm/v/@sperekrestova/interactive-leetcode-mcp.svg)](https://www.npmjs.com/package/@sperekrestova/interactive-leetcode-mcp)
-[![npm downloads](https://img.shields.io/npm/dm/@sperekrestova/interactive-leetcode-mcp.svg)](https://www.npmjs.com/package/@sperekrestova/interactive-leetcode-mcp)
-[![GitHub stars](https://img.shields.io/github/stars/SPerekrestova/interactive-leetcode-mcp)](https://github.com/SPerekrestova/interactive-leetcode-mcp)
-[![MCP Registry](https://badge.mcpx.dev?status=on)](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.SPerekrestova%2Finteractive-leetcode-mcp/versions/latest)
-[![GitHub license](https://img.shields.io/github/license/SPerekrestova/interactive-leetcode-mcp)](https://github.com/SPerekrestova/interactive-leetcode-mcp/blob/main/LICENSE)
+> Fork of [SPerekrestova/interactive-leetcode-mcp](https://github.com/SPerekrestova/interactive-leetcode-mcp) with **note tools** added (get, update, delete per-problem notes on leetcode.com).
 
-> Current project is under active development and may not work perfectly
+## What's Added
+
+- **`get_note`** - Retrieve your note for a specific problem
+- **`update_note`** - Create or update a note (supports markdown)
+- **`delete_note`** - Delete a note
+
+These use LeetCode Global's undocumented GraphQL note API (works on leetcode.com, not just CN).
 
 ## Features
-
-<video src="https://github.com/user-attachments/assets/935bbc9f-7199-417e-8987-fd6cd60b8fb5"></video>
 
 - 🔐 **AI-guided authentication** - Claude walks you through one-time credential setup
 - 🎓 **Learning-guided mode** - AI provides hints before solutions to maximize learning
 - 📝 **Solution submission** - Submit code and get instant results
+- 📓 **Notes** - Read, write, and delete per-problem notes on LeetCode
 - 💬 **Conversational workflow** - Practice naturally with Claude Code
 - 🌍 **Multi-language support** - Java, Python, C++, JavaScript, TypeScript, and more
 - 📊 **Detailed feedback** - Runtime stats, memory usage, failed test cases
@@ -29,16 +30,16 @@
 
 ## Installation
 
-### Via NPM (Recommended)
+### Via npx from GitHub (Recommended)
 
 ```bash
-npm install -g @sperekrestova/interactive-leetcode-mcp
+npx -y github:Jarjarbinks8341/interactive-leetcode-mcp
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/SPerekrestova/interactive-leetcode-mcp.git
+git clone https://github.com/Jarjarbinks8341/interactive-leetcode-mcp.git
 cd interactive-leetcode-mcp
 npm install && npm run build
 npm link
@@ -51,17 +52,17 @@ npm link
 You can execute this command in CLI
 
 ```bash
-claude mcp add --transport stdio leetcode -- npx -y @sperekrestova/interactive-leetcode-mcp@latest
+claude mcp add --transport stdio leetcode -- npx -y github:Jarjarbinks8341/interactive-leetcode-mcp
 ```
 
-Or add to your MCP configuration file (`~/.config/claude-code/mcp.json`) or (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Or add to your MCP configuration file:
 
 ```json
 {
   "mcpServers": {
     "leetcode": {
       "command": "npx",
-      "args": ["-y", "interactive-leetcode-mcp"]
+      "args": ["-y", "github:Jarjarbinks8341/interactive-leetcode-mcp"]
     }
   }
 }
@@ -163,6 +164,23 @@ Claude: "🎉 Accepted! Runtime: 2ms (beats 95.3%)"
 - Submit code and get real-time results
 - Parameters: `problemSlug`, `code`, `language`
 - Returns: acceptance status, runtime, memory, or failed test case
+
+### Note Tools
+
+**`get_note`**
+
+- Retrieve your note for a problem
+- Parameters: `titleSlug` (e.g., "two-sum")
+
+**`update_note`**
+
+- Create or update a note (supports markdown)
+- Parameters: `titleSlug`, `content`
+
+**`delete_note`**
+
+- Delete your note for a problem
+- Parameters: `titleSlug`
 
 ### User Tools
 
@@ -286,14 +304,14 @@ The skill is also published on [ClawHub](https://clawhub.ai/SPerekrestova/intera
 
 ## Acknowledgements
 
-Forked from [Leetcode mcp](https://github.com/jinzcdev/leetcode-mcp-server))
+Forked from [SPerekrestova/interactive-leetcode-mcp](https://github.com/SPerekrestova/interactive-leetcode-mcp), which was forked from [jinzcdev/leetcode-mcp-server](https://github.com/jinzcdev/leetcode-mcp-server).
 
 ## License
 
-MIT © SPerekrestova
+MIT
 
 ## Links
 
-- [NPM Package](https://www.npmjs.com/package/@sperekrestova/interactive-leetcode-mcp)
-- [Report Issues](https://github.com/SPerekrestova/interactive-leetcode-mcp/issues)
+- [Upstream Repo](https://github.com/SPerekrestova/interactive-leetcode-mcp)
+- [Report Issues](https://github.com/Jarjarbinks8341/interactive-leetcode-mcp/issues)
 - [MCP Documentation](https://modelcontextprotocol.io)
