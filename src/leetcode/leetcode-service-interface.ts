@@ -204,4 +204,15 @@ export interface LeetcodeServiceInterface {
      * @returns Promise resolving to the username if valid, null otherwise
      */
     validateCredentials(csrf: string, session: string): Promise<string | null>;
+
+    fetchNoteByTitleSlug(
+        titleSlug: string
+    ): Promise<{ questionId: string; note: string }>;
+    updateNoteByTitleSlug(
+        titleSlug: string,
+        content: string
+    ): Promise<{ ok: boolean; error?: string }>;
+    deleteNoteByTitleSlug(
+        titleSlug: string
+    ): Promise<{ ok: boolean; error?: string }>;
 }

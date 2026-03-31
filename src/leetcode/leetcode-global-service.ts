@@ -614,4 +614,41 @@ export class LeetCodeGlobalService implements LeetcodeServiceInterface {
         this.credential.csrf = csrf;
         this.credential.session = session;
     }
+
+    async fetchNoteByTitleSlug(
+        titleSlug: string
+    ): Promise<{ questionId: string; note: string }> {
+        const response = await this.leetCodeApi.graphql({
+            query: `query questionNote($titleSlug: String!) { question(titleSlug: $titleSlug) { questionId note } }`,
+            variables: { titleSlug }
+        });
+        const question = response.data?.question;
+        if (!question) throw new Error(`Problem "${titleSlug}" not found`);
+        return { questionId: question.questionId, note: question.note ?? "" };
+    }
+
+    async updateNoteByTitleSlug(
+        titleSlug: string,
+        content: string
+    ): Promise<{ ok: boolean; error?: string }> {
+        const response = await this.leetCodeApi.graphql({
+            query: `mutation updateNote($titleSlug: String!, $content: String!) { updateNote(titleSlug: $titleSlug, content: $content) { ok error } }`,
+            variables: { titleSlug, content }
+        });
+        return (
+            response.data?.updateNote ?? { ok: false, error: "Unknown error" }
+        );
+    }
+
+    async deleteNoteByTitleSlug(
+        titleSlug: string
+    ): Promise<{ ok: boolean; error?: string }> {
+        const response = await this.leetCodeApi.graphql({
+            query: `mutation deleteNote($titleSlug: String!) { deleteNote(titleSlug: $titleSlug) { ok error } }`,
+            variables: { titleSlug }
+        });
+        return (
+            response.data?.deleteNote ?? { ok: false, error: "Unknown error" }
+        );
+    }
 }
