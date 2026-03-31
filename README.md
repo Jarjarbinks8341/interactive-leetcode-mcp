@@ -10,297 +10,41 @@
 
 These use LeetCode Global's undocumented GraphQL note API (works on leetcode.com, not just CN).
 
-## Features
+## Setup
 
-- 🔐 **AI-guided authentication** - Claude walks you through one-time credential setup
-- 🎓 **Learning-guided mode** - AI provides hints before solutions to maximize learning
-- 📝 **Solution submission** - Submit code and get instant results
-- 📓 **Notes** - Read, write, and delete per-problem notes on LeetCode
-- 💬 **Conversational workflow** - Practice naturally with Claude Code
-- 🌍 **Multi-language support** - Java, Python, C++, JavaScript, TypeScript, and more
-- 📊 **Detailed feedback** - Runtime stats, memory usage, failed test cases
-- 📚 **Problem data** - Descriptions, constraints, examples, editorial solutions
-- 👤 **User tracking** - Profile data, submission history, contest rankings
-
-## Prerequisites
-
-- Node.js v20.x or above
-- LeetCode account
-- Any modern web browser (Chrome, Firefox, Safari, Edge, etc.)
-
-## Installation
-
-### Via npx from GitHub (Recommended)
-
-```bash
-npx -y github:Jarjarbinks8341/interactive-leetcode-mcp
-```
-
-### From Source
-
-```bash
-git clone https://github.com/Jarjarbinks8341/interactive-leetcode-mcp.git
-cd interactive-leetcode-mcp
-npm install && npm run build
-npm link
-```
-
-## Configuration
-
-### Claude Code & Claude Desktop
-
-You can execute this command in CLI
+### 1. Install the MCP server
 
 ```bash
 claude mcp add --transport stdio leetcode -- npx -y github:Jarjarbinks8341/interactive-leetcode-mcp
 ```
 
-Or add to your MCP configuration file:
+Restart Claude Code after adding.
 
-```json
-{
-  "mcpServers": {
-    "leetcode": {
-      "command": "npx",
-      "args": ["-y", "github:Jarjarbinks8341/interactive-leetcode-mcp"]
-    }
-  }
-}
-```
+### 2. Authenticate with LeetCode
 
-### Local build
-
-```json
-{
-  "mcpServers": {
-    "leetcode": {
-      "command": "node",
-      "args": ["/path/to/this/project/interactive-leetcode-mcp/build/index.js"]
-    }
-  }
-}
-```
-
-## Quick Start
-
-### 1. Authorize with LeetCode
+On first use, tell Claude:
 
 ```
 You: "Authorize with LeetCode"
-Claude: [Opens LeetCode in your browser and guides you through the process]
-Claude: "Please log in to your account. Once logged in, I'll walk you through
-        getting two cookie values we need. First, press F12 to open DevTools..."
-You: [Follows Claude's step-by-step guidance]
-You: "Here are my cookies: csrftoken is abc123... and LEETCODE_SESSION is xyz789..."
-Claude: "✓ Perfect! Your credentials are validated and saved. Welcome back, johndoe!"
 ```
 
-### 2. Practice a Problem
-
-```
-You: "I want to practice two-sum"
-Claude: [Fetches problem and creates working file]
-```
-
-### 3. Get Help When Stuck
-
-```
-You: "Give me a hint"
-Claude: [Provides contextual guidance based on your code]
-```
-
-### 4. Submit Your Solution
-
-```
-You: "Submit my solution"
-Claude: "🎉 Accepted! Runtime: 2ms (beats 95.3%)"
-```
-
-## Available Tools
-
-### Authorization
-
-**`start_leetcode_auth`**
-
-- Initiates authentication flow
-- Opens browser to LeetCode login (when possible)
-- Returns structured instructions for AI agent to guide you
-- No parameters required
-
-**`save_leetcode_credentials`**
-
-- Validates and saves your LeetCode credentials
-- Parameters: `csrftoken`, `session` (cookie values you provide)
-- Makes test API call to verify credentials
-- Securely stores credentials for future use
-
-**`check_auth_status`**
-
-- Checks if you're authenticated
-- Returns username and credential age
-- Warns if credentials may expire soon
-- No parameters required
-
-### Problem Tools
-
-**`get_daily_challenge`**
-
-- Fetch today's daily coding challenge
-
-**`get_problem`**
-
-- Get detailed problem information by slug
-- Parameters: `titleSlug` (e.g., "two-sum")
-
-**`search_problems`**
-
-- Search problems by difficulty, tags, keywords
-- Supports filtering and pagination
-
-### Submission Tools
-
-**`submit_solution`**
-
-- Submit code and get real-time results
-- Parameters: `problemSlug`, `code`, `language`
-- Returns: acceptance status, runtime, memory, or failed test case
-
-### Note Tools
-
-**`get_note`**
-
-- Retrieve your note for a problem
-- Parameters: `titleSlug` (e.g., "two-sum")
-
-**`update_note`**
-
-- Create or update a note (supports markdown)
-- Parameters: `titleSlug`, `content`
-
-**`delete_note`**
-
-- Delete your note for a problem
-- Parameters: `titleSlug`
-
-### User Tools
-
-**`get_user_profile`**
-
-- Retrieve user profile information
-
-**`get_user_submissions`**
-
-- Get submission history with filtering
-
-**`get_user_contest_ranking`**
-
-- View contest performance and rankings
-
-## Learning Mode
-
-The Interactive LeetCode MCP includes AI agent guidance through MCP Prompts to create a better learning experience.
-
-### Features
-
-**Workspace Setup:**
-When learning mode is active, Claude will:
-
-- Create a workspace file named `{problem-slug}.{extension}`
-- Paste the code template into the file
-- Set up proper naming conventions (e.g., Java class names)
-
-**Learning-Guided Mode:**
-When active, Claude follows these guidelines:
-
-- Provides progressive hints (4 levels) before revealing solutions
-- Asks guiding questions about approach and complexity
-- Encourages independent problem-solving
-- Only shows complete solutions when explicitly requested
-
-**Problem Workflow:**
-Guides you through the complete cycle:
-
-1. Understand the problem
-2. Plan the approach
-3. Set up workspace
-4. Implement with hints
-5. Optimize and analyze complexity
-6. Submit and review results
-
-### How to Use Learning Mode
-
-To activate learning mode, tell Claude you want to practice with guidance — for example, "Let's practice in learning mode" or "I want to learn two-sum with hints." Once active:
-
-1. **Fetch a problem** to see the description and get workspace setup guidance
-2. **Ask for hints** rather than solutions ("Give me a hint")
-3. **Implement your solution** with progressive guidance
-4. **Request the solution** only when you want to compare with optimal approach ("Show me the solution")
-
-## Troubleshooting
-
-**"Not authorized" or "Invalid credentials" error**
-
-- Ask Claude to "Authorize with LeetCode" to start fresh authentication
-- Make sure you're logged into LeetCode in your browser before extracting cookies
-- Verify you copied the complete cookie values (they can be very long)
-- Check that you didn't accidentally copy extra spaces or characters
-
-**"Credentials have expired"**
-
-- LeetCode cookies typically expire after 7-14 days
-- Simply ask Claude to "Authorize with LeetCode" again
-- You'll need to extract fresh cookies from your browser
-
-**Can't find DevTools or cookies**
-
-- Ask Claude which browser you're using - Claude will provide browser-specific instructions
-- In Chrome: Press F12, click "Application" tab, expand "Cookies"
-- In Firefox: Press F12, click "Storage" tab, expand "Cookies"
-- In Safari: Enable Developer menu first (Preferences → Advanced), then Develop → Show Web Inspector
-
-**Copied wrong values**
-
-- Make sure you're copying the VALUE column, not the name
-- The values should be long random strings (50+ characters)
-- Double-click the value to select all of it before copying
-- If you're unsure, Claude can guide you through the process again
-
-**Browser doesn't open during authorization**
-
-- That's okay! Just open https://leetcode.com/accounts/login/ manually
-- Claude will still guide you through the cookie extraction process
-
-**"Unsupported language" error**
-
-- Supported languages: java, python, python3, cpp, c++, javascript, js, typescript, ts
-
-**Submission timeout**
-
-- LeetCode may be experiencing high traffic - wait and retry
-- Check your internet connection
-
-## Skills & Plugins
-
-This repo also ships an **agent skill** that teaches Claude (and other AI agents) how to use the MCP server correctly — including session flow, prompt invocations, learning mode, and authentication.
-
-### Claude Code Plugin
-
-Install the skill directly as a Claude Code plugin:
-
-```
-/plugin marketplace add SPerekrestova/interactive-leetcode-mcp
-/plugin install interactive-leetcode-mcp@interactive-leetcode-mcp
-```
-
-Then start a practice session with:
-
-```
-/interactive-leetcode-mcp:interactive-leetcode-mcp
-```
-
-### ClawHub (OpenClaw / Clawbot)
-
-The skill is also published on [ClawHub](https://clawhub.ai/SPerekrestova/interactive-leetcode) for use with OpenClaw-compatible agents.
+Claude will open your browser and guide you to extract two cookies from LeetCode:
+
+1. Log in to [leetcode.com](https://leetcode.com)
+2. Open DevTools (F12) → Application (Chrome) or Storage (Firefox) → Cookies → `https://leetcode.com`
+3. Copy the values of **`csrftoken`** and **`LEETCODE_SESSION`**
+4. Paste them to Claude when prompted
+
+Credentials are saved to `~/.leetcode-mcp/credentials.json` and typically last 7-14 days. Re-run the auth flow when they expire.
+
+## Features
+
+- AI-guided authentication and learning mode
+- Problem search, daily challenges, editorial solutions
+- Code submission with runtime/memory stats
+- Per-problem notes (read, write, delete)
+- User profile, submission history, contest rankings
+- Multi-language support (Python, C++, Java, JavaScript, TypeScript, etc.)
 
 ## Acknowledgements
 
@@ -309,9 +53,3 @@ Forked from [SPerekrestova/interactive-leetcode-mcp](https://github.com/SPerekre
 ## License
 
 MIT
-
-## Links
-
-- [Upstream Repo](https://github.com/SPerekrestova/interactive-leetcode-mcp)
-- [Report Issues](https://github.com/Jarjarbinks8341/interactive-leetcode-mcp/issues)
-- [MCP Documentation](https://modelcontextprotocol.io)
