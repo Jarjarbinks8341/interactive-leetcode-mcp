@@ -1,0 +1,1 @@
+{"version":3,"file":"registry-base.js","sourceRoot":"","sources":["../../src/common/registry-base.ts"],"names":[],"mappings":"AAGA;;;;GAIG;AACH,MAAM,OAAgB,YAAY;IAQhB;IACA;IARd;;;;;OAKG;IACH,YACc,MAAiB,EACjB,eAAyC;QADzC,WAAM,GAAN,MAAM,CAAW;QACjB,oBAAe,GAAf,eAAe,CAA0B;IACpD,CAAC;IAEJ;;OAEG;IACI,QAAQ;QACX,IAAI,CAAC,cAAc,EAAE,CAAC;IAC1B,CAAC;IAED;;OAEG;IACO,cAAc,KAAU,CAAC;CACtC"}

@@ -1,0 +1,75 @@
+import { z } from "zod";
+import { ToolRegistry } from "./tool-registry.js";
+/**
+ * Contest tool registry class that handles registration of LeetCode contest-related tools.
+ * This class manages tools for accessing contest rankings, history, and user performance in contests.
+ */
+export class ContestToolRegistry extends ToolRegistry {
+    registerPublic() {
+        // User contest ranking tool
+        this.server.registerTool(
+            "get_user_contest_ranking",
+            {
+                description:
+                    "Retrieves a user's contest ranking information on LeetCode, including overall ranking, participation history, and performance metrics across contests",
+                inputSchema: {
+                    username: z
+                        .string()
+                        .describe(
+                            "LeetCode username to retrieve contest ranking information for"
+                        ),
+                    attended: z
+                        .boolean()
+                        .optional()
+                        .default(true)
+                        .describe(
+                            "Whether to include only the contests the user has participated in (true) or all contests (false); defaults to true"
+                        )
+                }
+            },
+            async ({ username, attended = true }) => {
+                try {
+                    const data =
+                        await this.leetcodeService.fetchUserContestRanking(
+                            username,
+                            attended
+                        );
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    username,
+                                    contestRanking: data
+                                })
+                            }
+                        ]
+                    };
+                } catch (error) {
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    error: "Failed to fetch user contest ranking",
+                                    message: error.message
+                                })
+                            }
+                        ]
+                    };
+                }
+            }
+        );
+    }
+}
+/**
+ * Registers all contest-related tools with the MCP server.
+ *
+ * @param server - The MCP server instance to register tools with
+ * @param leetcodeService - The LeetCode service implementation to use for API calls
+ */
+export function registerContestTools(server, leetcodeService) {
+    const registry = new ContestToolRegistry(server, leetcodeService);
+    registry.register();
+}
+//# sourceMappingURL=contest-tools.js.map

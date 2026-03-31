@@ -85,7 +85,7 @@ CLAUDE.md
 
 **/.DS_Store
 
-build/
+# build/ — kept in git so npx github:... installs work
 .vscode/settings.json
 .idea
 /.idea
