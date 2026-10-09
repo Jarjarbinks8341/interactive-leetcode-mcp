@@ -1,0 +1,73 @@
+import { credentialsStorage as defaultStorage } from "../utils/credentials.js";
+import logger from "../utils/logger.js";
+/**
+ * Loads saved credentials from disk, validates them against LeetCode, and
+ * pushes them into the running service if they're still good.
+ *
+ * Safe to call at server startup; never throws — failures are logged and the
+ * outcome is returned for callers that want to react.
+ */
+export async function restoreCredentials(service, storage = defaultStorage) {
+    let credentials;
+    try {
+        if (!(await storage.exists())) {
+            return { status: "no_credentials" };
+        }
+        credentials = await storage.load();
+    } catch (error) {
+        logger.warn(
+            "Saved credentials could not be loaded; ignoring: %s",
+            error instanceof Error ? error.message : String(error)
+        );
+        return { status: "invalid", reason: "load_failed" };
+    }
+    if (!credentials) {
+        logger.warn(
+            "Saved credentials file exists but could not be parsed; ignoring."
+        );
+        return { status: "invalid", reason: "load_failed" };
+    }
+    let username;
+    try {
+        username = await applyValidatedCredentials(
+            service,
+            credentials.csrftoken,
+            credentials.LEETCODE_SESSION
+        );
+    } catch (error) {
+        logger.warn(
+            "Saved credentials validation failed; user will need to re-authenticate: %s",
+            error instanceof Error ? error.message : String(error)
+        );
+        return { status: "invalid", reason: "expired" };
+    }
+    if (!username) {
+        logger.info(
+            "Saved credentials are no longer valid; user will need to re-authenticate."
+        );
+        return { status: "invalid", reason: "expired" };
+    }
+    logger.info(
+        "Restored LeetCode session for %s from saved credentials.",
+        username
+    );
+    return { status: "restored", username };
+}
+/**
+ * Validates `csrf` / `session` against LeetCode and, on success, pushes them
+ * into the running service so the very next authenticated tool call works
+ * without forcing a server restart.
+ *
+ * Returns the validated username, or `null` if LeetCode rejected the cookies.
+ * Trusts the `validateCredentials` interface contract (`Promise<string | null>`)
+ * and does not catch — any exception thrown by the service propagates.
+ */
+export async function applyValidatedCredentials(service, csrf, session) {
+    const username = await service.validateCredentials(csrf, session);
+    if (!username) {
+        return null;
+    }
+    service.updateCredentials(csrf, session);
+    return username;
+}
+//# sourceMappingURL=auth-flow.js.map

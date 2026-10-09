@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applyValidatedCredentials } from "../../auth/auth-flow.js";
 import { openDefaultBrowser } from "../../utils/browser-launcher.js";
 import { credentialsStorage } from "../../utils/credentials.js";
 import { ToolRegistry } from "./tool-registry.js";
@@ -178,12 +179,14 @@ export class AuthToolRegistry extends ToolRegistry {
                             ]
                         };
                     }
-                    // Validate credentials are still valid
-                    const username =
-                        await this.leetcodeService.validateCredentials(
-                            credentials.csrftoken,
-                            credentials.LEETCODE_SESSION
-                        );
+                    // Validate credentials and, on success, push them into
+                    // the running service so the very next authenticated
+                    // tool call works without a server restart.
+                    const username = await applyValidatedCredentials(
+                        this.leetcodeService,
+                        credentials.csrftoken,
+                        credentials.LEETCODE_SESSION
+                    );
                     if (!username) {
                         return {
                             content: [

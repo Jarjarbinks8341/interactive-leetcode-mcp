@@ -1,6 +1,29 @@
 import { Credential, LeetCode } from "leetcode-query";
+import {
+    DailyChallenge,
+    Problem,
+    ProblemSearchResult,
+    SimplifiedProblem
+} from "../types/problem.js";
+import {
+    SolutionArticleDetail,
+    SolutionArticleList
+} from "../types/solution.js";
 import { SubmissionResult } from "../types/submission.js";
-import { LeetcodeServiceInterface } from "./leetcode-service-interface.js";
+import {
+    UserAllSubmissions,
+    UserContestInfo,
+    UserProfile,
+    UserProgressQuestionList,
+    UserRecentACSubmissions,
+    UserRecentSubmissions,
+    UserStatus,
+    UserSubmissionDetail
+} from "../types/user.js";
+import {
+    LeetcodeServiceInterface,
+    SolutionArticlesQueryOptions
+} from "./leetcode-service-interface.js";
 /**
  * LeetCode Global API Service Implementation
  */
@@ -8,26 +31,29 @@ export declare class LeetCodeGlobalService implements LeetcodeServiceInterface {
     private readonly leetCodeApi;
     private readonly credential;
     constructor(leetCodeApi: LeetCode, credential: Credential);
-    fetchUserSubmissionDetail(id: number): Promise<any>;
-    fetchUserStatus(): Promise<any>;
+    fetchUserSubmissionDetail(id: number): Promise<UserSubmissionDetail>;
+    fetchUserStatus(): Promise<UserStatus>;
     fetchUserAllSubmissions(options: {
         offset: number;
         limit: number;
         questionSlug?: string;
-        lastKey?: string;
-        lang?: string;
-        status?: string;
-    }): Promise<any>;
-    fetchUserRecentSubmissions(username: string, limit?: number): Promise<any>;
+    }): Promise<UserAllSubmissions>;
+    fetchUserRecentSubmissions(
+        username: string,
+        limit?: number
+    ): Promise<UserRecentSubmissions>;
     fetchUserRecentACSubmissions(
         username: string,
         limit?: number
-    ): Promise<any>;
-    fetchUserProfile(username: string): Promise<any>;
-    fetchUserContestRanking(username: string, attended?: boolean): Promise<any>;
-    fetchDailyChallenge(): Promise<any>;
-    fetchProblem(titleSlug: string): Promise<any>;
-    fetchProblemSimplified(titleSlug: string): Promise<any>;
+    ): Promise<UserRecentACSubmissions>;
+    fetchUserProfile(username: string): Promise<UserProfile>;
+    fetchUserContestRanking(
+        username: string,
+        attended?: boolean
+    ): Promise<UserContestInfo>;
+    fetchDailyChallenge(): Promise<DailyChallenge>;
+    fetchProblem(titleSlug: string): Promise<Problem>;
+    fetchProblemSimplified(titleSlug: string): Promise<SimplifiedProblem>;
     searchProblems(
         category?: string,
         tags?: string[],
@@ -35,13 +61,13 @@ export declare class LeetCodeGlobalService implements LeetcodeServiceInterface {
         limit?: number,
         offset?: number,
         searchKeywords?: string
-    ): Promise<any>;
-    fetchUserProgressQuestionList(options?: {
-        offset?: number;
-        limit?: number;
+    ): Promise<ProblemSearchResult>;
+    fetchUserProgressQuestionList(filters: {
+        offset: number;
+        limit: number;
         questionStatus?: string;
         difficulty?: string[];
-    }): Promise<any>;
+    }): Promise<UserProgressQuestionList>;
     /**
      * Retrieves a list of solutions for a specific problem.
      *
@@ -51,15 +77,17 @@ export declare class LeetCodeGlobalService implements LeetcodeServiceInterface {
      */
     fetchQuestionSolutionArticles(
         questionSlug: string,
-        options?: any
-    ): Promise<any>;
+        options?: SolutionArticlesQueryOptions
+    ): Promise<SolutionArticleList>;
     /**
      * Retrieves detailed information about a specific solution on LeetCode.
      *
      * @param topicId - The topic ID of the solution
      * @returns Promise resolving to the solution detail data
      */
-    fetchSolutionArticleDetail(topicId: string): Promise<any>;
+    fetchSolutionArticleDetail(
+        topicId: string
+    ): Promise<SolutionArticleDetail | null>;
     submitSolution(
         problemSlug: string,
         code: string,

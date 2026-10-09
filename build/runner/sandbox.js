@@ -1,0 +1,178 @@
+/**
+ * Detect the strongest OS-level sandbox available on this host and turn
+ * a plain command into a sandbox-wrapped command.
+ *
+ * We deliberately ship no JS-level sandbox; the threat model is
+ * "user-running-their-own-code", not "untrusted multi-tenant input". The
+ * sandbox reduces blast radius of accidental rm-rf or runaway loops, not
+ * malicious code escapes.
+ *
+ * Priority:
+ *   - Linux: bwrap > firejail > none
+ *   - macOS: sandbox-exec > none
+ *   - Windows: none (native AppContainer wrappers are too platform-
+ *              specific to ship in v1)
+ *
+ * If nothing is detected the runner falls back to a plain subprocess and
+ * surfaces a `warning` in the `RunResult`. Users who want to refuse to
+ * run without a sandbox can set `LEETCODE_MCP_REQUIRE_SANDBOX=1`; the
+ * tool layer enforces this — the runner only reports.
+ */
+import { execFile as execFileCb } from "node:child_process";
+import { access, constants as fsConstants } from "node:fs/promises";
+import { promisify } from "node:util";
+const execFile = promisify(execFileCb);
+let cached;
+function escapeSandboxProfileString(value) {
+    if (/[\r\n]/.test(value)) {
+        throw new Error("sandbox-exec profile strings cannot contain newlines");
+    }
+    return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+/**
+ * Returns whether `<bin> --version` succeeds. Uses the no-shell
+ * `execFile` so the probe never re-interprets `bin`/`args` through
+ * `/bin/sh -c` — important because future callers might be tempted to
+ * pass dynamic values, and the default `child_process.exec` is a
+ * shell-expansion foot-gun.
+ */
+async function probe(bin, args = ["--version"]) {
+    try {
+        await execFile(bin, args, { timeout: 1500 });
+        return true;
+    } catch {
+        return false;
+    }
+}
+/**
+ * Probe the host once per server lifetime. Subsequent calls return the
+ * cached result; tests can use `__resetSandboxCacheForTest` to force
+ * re-detection.
+ */
+export async function detectSandbox() {
+    if (cached) {
+        return cached;
+    }
+    const platform = process.platform;
+    if (platform === "darwin") {
+        // sandbox-exec lives at /usr/bin/sandbox-exec on every macOS
+        // version we care about. Detect by file existence + executable
+        // bit rather than spawning the binary — its `-help` flag is
+        // undocumented and exits non-zero on some macOS versions, which
+        // would silently fall through to `kind: "none"` and lie to
+        // users that no sandbox is available.
+        try {
+            await access("/usr/bin/sandbox-exec", fsConstants.X_OK);
+            cached = { kind: "sandbox-exec", path: "/usr/bin/sandbox-exec" };
+            return cached;
+        } catch {
+            /* fall through to "none" */
+        }
+    } else if (platform === "linux") {
+        if (await probe("bwrap")) {
+            cached = { kind: "bwrap" };
+            return cached;
+        }
+        if (await probe("firejail")) {
+            cached = { kind: "firejail" };
+            return cached;
+        }
+    }
+    cached = { kind: "none" };
+    return cached;
+}
+/**
+ * Wrap an existing command with the detected sandbox. Returns the new
+ * `[cmd, args]` pair plus the kind that was applied. When no sandbox is
+ * available, returns the input pair untouched and `kind: "none"`.
+ *
+ * `cwdAllowed` is the temp directory the user code is permitted to read
+ * + write — the rest of the filesystem is read-only (Linux) or denied
+ * (macOS).
+ */
+export async function wrapWithSandbox(
+    cmd,
+    args,
+    cwdAllowed,
+    writablePaths = []
+) {
+    const detected = await detectSandbox();
+    const allowedWritePaths = [cwdAllowed, ...writablePaths];
+    if (detected.kind === "bwrap") {
+        return {
+            cmd: "bwrap",
+            args: [
+                "--ro-bind",
+                "/",
+                "/",
+                "--tmpfs",
+                "/tmp",
+                ...allowedWritePaths.flatMap((path) => ["--bind", path, path]),
+                "--proc",
+                "/proc",
+                "--dev",
+                "/dev",
+                "--unshare-all",
+                "--die-with-parent",
+                "--",
+                cmd,
+                ...args
+            ],
+            kind: "bwrap"
+        };
+    }
+    if (detected.kind === "firejail") {
+        return {
+            cmd: "firejail",
+            args: [
+                "--quiet",
+                "--noprofile",
+                "--net=none",
+                "--private-tmp",
+                ...allowedWritePaths.map((path) => `--whitelist=${path}`),
+                "--",
+                cmd,
+                ...args
+            ],
+            kind: "firejail"
+        };
+    }
+    if (detected.kind === "sandbox-exec") {
+        // Minimal sandbox-exec profile — deny by default, allow process
+        // primitives + reads everywhere + writes only under allowed paths.
+        const writableSubpaths = allowedWritePaths
+            .map(
+                (path) =>
+                    `(allow file-write* (subpath "${escapeSandboxProfileString(path)}"))`
+            )
+            .join("\n");
+        const profile = `(version 1)
+(deny default)
+(allow process-fork)
+(allow process-exec)
+(allow file-read*)
+${writableSubpaths}
+(allow file-write* (regex #"^/dev/null$"))
+(allow file-write* (regex #"^/dev/dtracehelper$"))
+(allow sysctl-read)
+(allow mach-lookup)
+(allow signal (target self))
+(allow ipc-posix-shm)
+(deny network*)`;
+        return {
+            cmd: "/usr/bin/sandbox-exec",
+            args: ["-p", profile, cmd, ...args],
+            kind: "sandbox-exec"
+        };
+    }
+    return { cmd, args, kind: "none" };
+}
+/** Test helper — clears the per-process cache so unit tests can re-probe. */
+export function __resetSandboxCacheForTest() {
+    cached = undefined;
+}
+/** Test helper — seeds the per-process sandbox cache. */
+export function __setSandboxCacheForTest(next) {
+    cached = next;
+}
+//# sourceMappingURL=sandbox.js.map

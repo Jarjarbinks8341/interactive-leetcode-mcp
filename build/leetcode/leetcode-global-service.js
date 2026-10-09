@@ -1,8 +1,15 @@
 import axios from "axios";
+import { ErrorCode, LeetCodeError } from "../types/errors.js";
 import logger from "../utils/logger.js";
 import { SEARCH_PROBLEMS_QUERY } from "./graphql/search-problems.js";
 import { SOLUTION_ARTICLE_DETAIL_QUERY } from "./graphql/solution-article-detail.js";
 import { SOLUTION_ARTICLES_QUERY } from "./graphql/solution-articles.js";
+import {
+    CheckResponseSchema,
+    QuestionIdResponseSchema,
+    SubmitResponseSchema,
+    ValidateCredentialsResponseSchema
+} from "./schemas.js";
 const LANGUAGE_MAP = {
     java: "java",
     python: "python3",
@@ -41,7 +48,8 @@ export class LeetCodeGlobalService {
     }
     async fetchUserSubmissionDetail(id) {
         if (!this.isAuthenticated()) {
-            throw new Error(
+            throw new LeetCodeError(
+                ErrorCode.AUTH_REQUIRED,
                 "Authentication required to fetch user submission detail"
             );
         }
@@ -49,20 +57,23 @@ export class LeetCodeGlobalService {
     }
     async fetchUserStatus() {
         if (!this.isAuthenticated()) {
-            throw new Error("Authentication required to fetch user status");
+            throw new LeetCodeError(
+                ErrorCode.AUTH_REQUIRED,
+                "Authentication required to fetch user status"
+            );
         }
-        return await this.leetCodeApi.whoami().then((res) => {
-            return {
-                isSignedIn: res?.isSignedIn ?? false,
-                username: res?.username ?? "",
-                avatar: res?.avatar ?? "",
-                isAdmin: res?.isAdmin ?? false
-            };
-        });
+        const res = await this.leetCodeApi.whoami();
+        return {
+            isSignedIn: res?.isSignedIn ?? false,
+            username: res?.username ?? null,
+            avatar: res?.avatar ?? null,
+            isAdmin: res?.isAdmin ?? false
+        };
     }
     async fetchUserAllSubmissions(options) {
         if (!this.isAuthenticated()) {
-            throw new Error(
+            throw new LeetCodeError(
+                ErrorCode.AUTH_REQUIRED,
                 "Authentication required to fetch user submissions"
             );
         }
@@ -71,7 +82,9 @@ export class LeetCodeGlobalService {
             limit: options.limit ?? 20,
             slug: options.questionSlug
         });
-        return { submissions };
+        return {
+            submissions
+        };
     }
     async fetchUserRecentSubmissions(username, limit) {
         return await this.leetCodeApi.recent_submissions(username, limit);
@@ -107,14 +120,17 @@ export class LeetCodeGlobalService {
                 realName: matchedUser.profile.realName,
                 userAvatar: matchedUser.profile.userAvatar,
                 countryName: matchedUser.profile.countryName,
-                githubUrl: matchedUser.githubUrl,
+                githubUrl: matchedUser.githubUrl ?? undefined,
                 company: matchedUser.profile.company,
                 school: matchedUser.profile.school,
                 ranking: matchedUser.profile.ranking,
                 totalSubmissionNum: matchedUser.submitStats?.totalSubmissionNum
             };
         }
-        return profile;
+        throw new LeetCodeError(
+            ErrorCode.UPSTREAM_PAYLOAD_INVALID,
+            `LeetCode profile for "${username}" did not include a matched user`
+        );
     }
     async fetchUserContestRanking(username, attended = true) {
         const contestInfo = await this.leetCodeApi.user_contest_info(username);
@@ -134,16 +150,20 @@ export class LeetCodeGlobalService {
         return await this.leetCodeApi.daily();
     }
     async fetchProblem(titleSlug) {
-        return await this.leetCodeApi.problem(titleSlug);
+        const problem = await this.leetCodeApi.problem(titleSlug);
+        if (!problem) {
+            throw new LeetCodeError(
+                ErrorCode.PROBLEM_NOT_FOUND,
+                `Problem ${titleSlug} not found`
+            );
+        }
+        return problem;
     }
     async fetchProblemSimplified(titleSlug) {
         const problem = await this.fetchProblem(titleSlug);
-        if (!problem) {
-            throw new Error(`Problem ${titleSlug} not found`);
-        }
         const filteredTopicTags =
-            problem.topicTags?.map((tag) => tag.slug) || [];
-        const filteredCodeSnippets = problem.codeSnippets || [];
+            problem.topicTags?.map((tag) => tag.slug) ?? [];
+        const filteredCodeSnippets = problem.codeSnippets ?? [];
         let parsedSimilarQuestions = [];
         if (problem.similarQuestions) {
             try {
@@ -214,19 +234,23 @@ export class LeetCodeGlobalService {
             }))
         };
     }
-    async fetchUserProgressQuestionList(options) {
+    async fetchUserProgressQuestionList(filters) {
         if (!this.isAuthenticated()) {
-            throw new Error(
+            throw new LeetCodeError(
+                ErrorCode.AUTH_REQUIRED,
                 "Authentication required to fetch user progress question list"
             );
         }
-        const filters = {
-            skip: options?.offset || 0,
-            limit: options?.limit || 20,
-            questionStatus: options?.questionStatus,
-            difficulty: options?.difficulty
+        // Cast through unknown because leetcode-query types these as enums
+        // (LeetCodeQuestionStatus / LeetCodeDifficulty) but accepts the raw
+        // strings we forward from MCP tool inputs.
+        const upstreamFilters = {
+            skip: filters.offset,
+            limit: filters.limit,
+            questionStatus: filters.questionStatus,
+            difficulty: filters.difficulty
         };
-        return await this.leetCodeApi.user_progress_questions(filters);
+        return await this.leetCodeApi.user_progress_questions(upstreamFilters);
     }
     /**
      * Retrieves a list of solutions for a specific problem.
@@ -238,47 +262,39 @@ export class LeetCodeGlobalService {
     async fetchQuestionSolutionArticles(questionSlug, options) {
         const variables = {
             questionSlug,
-            first: options?.limit || 5,
-            skip: options?.skip || 0,
-            orderBy: options?.orderBy || "HOT",
+            first: options?.limit ?? 5,
+            skip: options?.skip ?? 0,
+            orderBy: options?.orderBy ?? "HOT",
             userInput: options?.userInput,
             tagSlugs: options?.tagSlugs ?? []
         };
-        return await this.leetCodeApi
-            .graphql({
-                query: SOLUTION_ARTICLES_QUERY,
-                variables
-            })
-            .then((res) => {
-                const ugcArticleSolutionArticles =
-                    res.data?.ugcArticleSolutionArticles;
-                if (!ugcArticleSolutionArticles) {
-                    return {
-                        totalNum: 0,
-                        hasNextPage: false,
-                        articles: []
-                    };
-                }
-                return {
-                    totalNum: ugcArticleSolutionArticles?.totalNum || 0,
-                    hasNextPage:
-                        ugcArticleSolutionArticles?.pageInfo?.hasNextPage ||
-                        false,
-                    articles:
-                        ugcArticleSolutionArticles?.edges
-                            ?.map((edge) => {
-                                if (
-                                    edge?.node &&
-                                    edge.node.topicId &&
-                                    edge.node.slug
-                                ) {
-                                    edge.node.articleUrl = `https://leetcode.com/problems/${questionSlug}/solutions/${edge.node.topicId}/${edge.node.slug}`;
-                                }
-                                return edge.node;
-                            })
-                            .filter((node) => node && node.canSee) || []
-                };
-            });
+        const res = await this.leetCodeApi.graphql({
+            query: SOLUTION_ARTICLES_QUERY,
+            variables
+        });
+        const ugcArticleSolutionArticles = res.data?.ugcArticleSolutionArticles;
+        if (!ugcArticleSolutionArticles) {
+            return {
+                totalNum: 0,
+                hasNextPage: false,
+                articles: []
+            };
+        }
+        return {
+            totalNum: ugcArticleSolutionArticles?.totalNum || 0,
+            hasNextPage:
+                ugcArticleSolutionArticles?.pageInfo?.hasNextPage ?? false,
+            articles:
+                ugcArticleSolutionArticles?.edges
+                    ?.map((edge) => {
+                        const node = edge?.node;
+                        if (node && node.topicId && node.slug) {
+                            node.articleUrl = `https://leetcode.com/problems/${questionSlug}/solutions/${node.topicId}/${node.slug}`;
+                        }
+                        return node;
+                    })
+                    .filter((node) => !!node && !!node.canSee) || []
+        };
     }
     /**
      * Retrieves detailed information about a specific solution on LeetCode.
@@ -287,16 +303,13 @@ export class LeetCodeGlobalService {
      * @returns Promise resolving to the solution detail data
      */
     async fetchSolutionArticleDetail(topicId) {
-        return await this.leetCodeApi
-            .graphql({
-                query: SOLUTION_ARTICLE_DETAIL_QUERY,
-                variables: {
-                    topicId
-                }
-            })
-            .then((response) => {
-                return response.data?.ugcArticleSolutionArticle;
-            });
+        const response = await this.leetCodeApi.graphql({
+            query: SOLUTION_ARTICLE_DETAIL_QUERY,
+            variables: {
+                topicId
+            }
+        });
+        return response.data?.ugcArticleSolutionArticle ?? null;
     }
     async submitSolution(problemSlug, code, language) {
         if (!this.isAuthenticated()) {
@@ -337,7 +350,17 @@ export class LeetCodeGlobalService {
                     }
                 }
             );
-            const submissionId = submitResponse.data.submission_id;
+            const parsedSubmit = SubmitResponseSchema.safeParse(
+                submitResponse.data
+            );
+            if (!parsedSubmit.success) {
+                throw new LeetCodeError(
+                    ErrorCode.UPSTREAM_PAYLOAD_INVALID,
+                    `Submit response did not match expected schema: ${parsedSubmit.error.message}`,
+                    parsedSubmit.error
+                );
+            }
+            const submissionId = parsedSubmit.data.submission_id;
             // Poll for results
             const checkUrl = `${baseUrl}/submissions/detail/${submissionId}/check/`;
             let attempts = 0;
@@ -350,7 +373,17 @@ export class LeetCodeGlobalService {
                         Cookie: `csrftoken=${this.credential.csrf}; LEETCODE_SESSION=${this.credential.session}`
                     }
                 });
-                const result = checkResponse.data;
+                const parsedCheck = CheckResponseSchema.safeParse(
+                    checkResponse.data
+                );
+                if (!parsedCheck.success) {
+                    throw new LeetCodeError(
+                        ErrorCode.UPSTREAM_PAYLOAD_INVALID,
+                        `Check response did not match expected schema: ${parsedCheck.error.message}`,
+                        parsedCheck.error
+                    );
+                }
+                const result = parsedCheck.data;
                 if (
                     result.state !== "SUCCESS" &&
                     result.state !== "PENDING" &&
@@ -368,12 +401,20 @@ export class LeetCodeGlobalService {
                     if (accepted) {
                         return {
                             accepted: true,
-                            runtime: result.runtime,
-                            memory: result.memory,
-                            runtimePercentile: result.runtime_percentile,
-                            memoryPercentile: result.memory_percentile,
-                            totalCorrect: result.total_correct,
-                            totalTestcases: result.total_testcases,
+                            runtime:
+                                result.runtime !== undefined
+                                    ? String(result.runtime)
+                                    : undefined,
+                            memory:
+                                result.memory !== undefined
+                                    ? String(result.memory)
+                                    : undefined,
+                            runtimePercentile:
+                                result.runtime_percentile ?? undefined,
+                            memoryPercentile:
+                                result.memory_percentile ?? undefined,
+                            totalCorrect: result.total_correct ?? undefined,
+                            totalTestcases: result.total_testcases ?? undefined,
                             statusMessage: "Accepted"
                         };
                     } else {
@@ -396,11 +437,11 @@ export class LeetCodeGlobalService {
                             undefined;
                         return {
                             accepted: false,
-                            statusMessage: result.status_msg,
+                            statusMessage: result.status_msg ?? "Unknown",
                             failedTestCase,
                             errorMessage,
-                            totalCorrect: result.total_correct,
-                            totalTestcases: result.total_testcases
+                            totalCorrect: result.total_correct ?? undefined,
+                            totalTestcases: result.total_testcases ?? undefined
                         };
                     }
                 }
@@ -456,9 +497,18 @@ export class LeetCodeGlobalService {
                 Referer: `${baseUrl}/problems/${problemSlug}/`
             }
         });
-        const question = response.data.data?.question;
+        const parsed = QuestionIdResponseSchema.safeParse(response.data);
+        if (!parsed.success) {
+            throw new LeetCodeError(
+                ErrorCode.UPSTREAM_PAYLOAD_INVALID,
+                `Question-id response did not match expected schema: ${parsed.error.message}`,
+                parsed.error
+            );
+        }
+        const question = parsed.data.data?.question;
         if (!question) {
-            throw new Error(
+            throw new LeetCodeError(
+                ErrorCode.PROBLEM_NOT_FOUND,
                 `Problem slug "${problemSlug}" not found or invalid.`
             );
         }
@@ -495,9 +545,18 @@ export class LeetCodeGlobalService {
                     }
                 }
             );
-            // Check if user is signed in and return username
-            const userStatus = response.data?.data?.userStatus;
-            if (userStatus?.isSignedIn === true && userStatus?.username) {
+            const parsed = ValidateCredentialsResponseSchema.safeParse(
+                response.data
+            );
+            if (!parsed.success) {
+                logger.warn(
+                    "validateCredentials: upstream payload did not match schema: %s",
+                    parsed.error.message
+                );
+                return null;
+            }
+            const userStatus = parsed.data.data?.userStatus;
+            if (userStatus?.isSignedIn === true && userStatus.username) {
                 return userStatus.username;
             }
             return null;

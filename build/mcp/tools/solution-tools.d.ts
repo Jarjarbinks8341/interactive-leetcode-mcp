@@ -1,20 +1,27 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SessionService } from "../../domain/session-service.js";
 import { LeetcodeServiceInterface } from "../../leetcode/leetcode-service-interface.js";
 import { ToolRegistry } from "./tool-registry.js";
 /**
- * Solution tool registry class that handles registration of LeetCode solution-related tools.
- * This class manages tools for accessing solutions, filtering solutions, and reading solution details.
+ * Solution tool registry — community-solution access.
+ *
+ * Both tools are gated by the pedagogy state machine: they reject with
+ * `HINT_LEVEL_TOO_LOW` until the active session for the slug has reached
+ * the maximum hint level. The agent is expected to drive the user
+ * through `request_hint` first.
  */
 export declare class SolutionToolRegistry extends ToolRegistry {
+    private readonly sessions;
+    constructor(
+        server: McpServer,
+        leetcodeService: LeetcodeServiceInterface,
+        sessions: SessionService
+    );
+    private assertTopicBelongsToSlug;
     protected registerPublic(): void;
 }
-/**
- * Registers all solution-related tools with the MCP server.
- *
- * @param server - The MCP server instance to register tools with
- * @param leetcodeService - The LeetCode service implementation to use for API calls
- */
 export declare function registerSolutionTools(
     server: McpServer,
-    leetcodeService: LeetcodeServiceInterface
+    leetcodeService: LeetcodeServiceInterface,
+    sessions: SessionService
 ): void;
